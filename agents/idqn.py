@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-
+import random
 from .models.idqn_models import QNet_FC
 
 
@@ -50,6 +50,9 @@ class IDQN():
         self.target_nets = {}
         self.buffers = {}
         self.optimizers = {}
+        self.epsilon = 1.0 # exploration probability at start
+        self.epsilon_min = 0.01 # minimum exploration probability
+        self.epsilon_decay = 0.0005 # exponential decay rate for exploration prob
 
         # initialize agents
         for agent in agent_names:
@@ -73,9 +76,11 @@ class IDQN():
     def store(self, agent_name, transition):
         self.buffers[agent_name].put(transition)
 
-    def act(self, observations, max_action=True):
+    def act(self, observations, decay_step):
+        explore_probability = self.epsilon_min + (self.epsilon - self.epsilon_min) * np.exp(-self.epsilon_decay * decay_step)
+        max_prob = random.random()
         actions = None
-        if max_action:
+        if max_prob > explore_probability:
             for agent_i in range(len(self.agent_names)):
                 obs_i = observations[agent_i:observations.shape[0]:len(
                     self.agent_names)]
@@ -94,7 +99,7 @@ class IDQN():
             num_envs = int(observations.shape[0]/len(self.agent_names))
             actions = np.random.randint(
                 self.action_space, size=(num_envs, len(self.agent_names)))
-
+            
         return actions
 
     # TODO: Add these to IDQN params
@@ -116,9 +121,8 @@ class IDQN():
                 loss.backward()
                 self.optimizers[agent].step()
 
-            if update % 10 == 0:
-                self._soft_update_target(self.target_nets[agent],
-                    self.q_nets[agent], 0.10)
+                self._soft_update_target(self.q_nets[agent], self.target_nets[agent],0.01)
+
 
     def save_model(self, path):
         if not os.path.exists(path):
@@ -130,5 +134,7 @@ class IDQN():
         for agent in self.agent_names:
             self.q_nets[agent].load_state_dict(torch.load(path + agent + ".pt"))
             self.target_nets[agent].load_state_dict(torch.load(path + agent + ".pt"))
+            #self.q_nets[agent].load_state_dict(torch.load(path + "agent_0_no_e_policy" + ".pt"))
+            #self.target_nets[agent].load_state_dict(torch.load(path + "agent_0_no_e_policy" + ".pt"))
 
     

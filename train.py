@@ -12,15 +12,14 @@ from supersuit import flatten_v0, pettingzoo_env_to_vec_env_v1, concat_vec_envs_
 
 torch.set_default_dtype(torch.float32)
 
-max_steps = 3000
+max_steps = 10000
 num_envs = 8
 log_steps = 1000
-warm_up_steps = 1000
-# per agent
-buffer_limit = 25000
+warm_up_steps = 2000
+buffer_limit = 25000 # per agent
 
 #env = black_death_v3(knights_archers_zombies_v10.env(use_typemasks=True))
-env = simple_v2.env(max_cycles=25, continuous_actions=False)
+env = simple_v2.env(max_cycles=50, continuous_actions=False)
 env.reset()
 # getting list of agents to store batches for corresponding agents
 agent_names = env.agents
@@ -39,11 +38,13 @@ agents = IDQN( env.observation_space.shape[0],env.action_space.n , agent_names, 
 # Training loop
 total_reward = 0
 observations = env.reset()
+
+max_paralell_steps = max_steps//num_envs
+
 for steps in range(max_steps):
     with torch.no_grad():
-        actions = agents.act(observations)
+        actions = agents.act(observations, decay_step=steps)
         
-
     observations_prime, rewards, dones, info = env.step(actions.flatten())
 
     # splitting transitions for separate agents, and storing in replay buffer
