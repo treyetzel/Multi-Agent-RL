@@ -1,7 +1,5 @@
-import random
-import time
 from test import test
-
+import wandb
 import numpy as np
 import torch
 from pettingzoo.butterfly import knights_archers_zombies_v10
@@ -13,37 +11,50 @@ from supersuit import (
     flatten_v0,
     pettingzoo_env_to_vec_env_v1,
 )
-
 from agents.idqn import IDQN
 from util.arguments import parser
 
-args = parser.parse_args()
+USE_WANDB = False
+
 
 torch.set_default_dtype(torch.float32)
+args = parser.parse_args()
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+configs = {}
+for arg in vars(args):
+    configs[arg] = getattr(args, arg)
 
-# env = black_death_v3(knights_archers_zombies_v10.env(use_typemasks=True))
-env = simple_v2.env(max_cycles=50, continuous_actions=False)
+if USE_WANDB:
+    wandb.init(project="Multi-Agent-RL", entity="kevduong", config=configs)
+
+# TODO: handle way to create env from args, need to handle for test as well
+env = "knights_and_archers"
+
+env = black_death_v3(knights_archers_zombies_v10.env(use_typemasks=True))
+# env = simple_v2.env(max_cycles=50, continuous_actions=False)
 env.reset()
-# getting list of agents to store batches for corresponding agents
 agent_names = env.agents
 env = aec_to_parallel(flatten_v0(env))
 env = pettingzoo_env_to_vec_env_v1(env)
 env = concat_vec_envs_v1(env, args.num_envs, num_cpus=0, base_class="gym")
+
+# TODO: Finish seeding, all seeds are set to 0 right now, add as arg
 torch.manual_seed(0)
 
 # TODO: add .train() for nets https://discuss.pytorch.org/t/model-train-and-model-eval-vs-model-and-model-eval/5744
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-observations = env.reset()
+observations = env.reset(seed=0)
 agents = IDQN(
-    env.observation_space.shape[0],
-    env.action_space.n,
-    agent_names,
-    device,
+    observation_space=env.observation_space.shape[0],
+    action_space=env.action_space.n,
+    agent_names=agent_names,
+    device=device,
     buffer_size=args.buffer_size,
+    lr=args.lr,
+    gamma=args.gamma,
+    batch_size=args.batch_size,
+    num_updates=args.num_updates,
 )
-
 
 max_paralell_steps = args.max_steps // args.num_envs
 running_log_steps = 0  # number of steps since last log
@@ -82,13 +93,16 @@ for steps in range(1, max_paralell_steps + 1):
 
     observations = observations_prime
 
-    if steps * args.num_envs >= warm_up_steps:
+    if steps * args.num_envs >= warm_up_steps and steps % args.k_step == 0:
         agents.update()
 
     # increment number of steps per parallel environment
     running_log_steps += args.num_envs
     if running_log_steps >= args.log_steps or steps == max_paralell_steps:
-        print(f"average rewards at step {steps*args.num_envs}: {test(agents, device)}")
+        avg_rew = test(agents, device)
+        print(f"average rewards at step {steps*args.num_envs}: {avg_rew}")
+        if USE_WANDB:
+            wandb.log({"test_avg_reward": avg_rew}, step=steps * args.num_envs)
         running_log_steps = 0
 
 path = "./agents/idqn/models/idqn_model/"

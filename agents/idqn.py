@@ -1,46 +1,16 @@
-import collections
 import os
 import random
 
-import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import random
 from .models.idqn_models import QNet_FC
+from .storage import ReplayBuffer
 
-
-class ReplayBuffer:
-    def __init__(self, buffer_size, device):
-        self.device = device
-        self.buffer = collections.deque(maxlen=buffer_size)
-
-    def put(self, transition):
-        self.buffer.append(transition)
-
-    def sample(self, n):
-        mini_batch = random.sample(self.buffer, n)
-        s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
-
-        for transition in mini_batch:
-            s, a, r, s_prime, done = transition
-            s_lst.append(s)
-            a_lst.append(a)
-            r_lst.append(r)
-            s_prime_lst.append(s_prime)
-            done_mask_lst.append(done)
-
-        return (
-            torch.tensor(s_lst, dtype=torch.float).to(self.device),
-            torch.tensor(a_lst, dtype=torch.float).to(self.device),
-            torch.tensor(r_lst, dtype=torch.float).to(self.device),
-            torch.tensor(s_prime_lst, dtype=torch.float).to(self.device),
-            torch.tensor(done_mask_lst, dtype=torch.float).to(self.device),
-        )
-
-    def size(self):
-        return len(self.buffer)
+random.seed(0)
+np.random.seed(0)
 
 
 class IDQN:
@@ -51,12 +21,15 @@ class IDQN:
         agent_names,
         device,
         buffer_size,
+        batch_size,
+        num_updates,
         lr=0.0005,
         gamma=0.99,
     ):
         self.agent_names = agent_names
         self.gamma = gamma
         self.action_space = action_space
+        self.lr = lr
         self.q_nets = {}
         self.target_nets = {}
         self.buffers = {}
@@ -64,7 +37,8 @@ class IDQN:
         self.epsilon = 1.0  # exploration probability at start
         self.epsilon_min = 0.01  # minimum exploration probability
         self.epsilon_decay = 0.0005  # exponential decay rate for exploration prob
-
+        self.batch_size = batch_size
+        self.num_updates = num_updates
         # initialize agents
         for agent in agent_names:
             new_buffer = ReplayBuffer(buffer_size, device)
@@ -121,10 +95,12 @@ class IDQN:
         return actions
 
     # TODO: Add these to IDQN params
-    def update(self, batch_size=32, num_updates=10):
+    def update(self):
         for agent in self.agent_names:
-            for update in range(num_updates):
-                obs, a, r, obs_prime, done_mask = self.buffers[agent].sample(batch_size)
+            for update in range(self.num_updates):
+                obs, a, r, obs_prime, done_mask = self.buffers[agent].sample(
+                    self.batch_size
+                )
                 q_vals = self.q_nets[agent].forward(obs)
                 q_a = q_vals.gather(1, a.unsqueeze(-1).long()).squeeze(-1)
 

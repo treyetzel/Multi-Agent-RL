@@ -5,15 +5,17 @@ from pettingzoo.mpe import simple_v2
 from supersuit import flatten_v0
 from agents.idqn import IDQN
 
-# env = flatten_v0(knights_archers_zombies_v10.env(use_typemasks=True))
+env = flatten_v0(knights_archers_zombies_v10.env(use_typemasks=True))
 
-env = flatten_v0(simple_v2.env(max_cycles=50, continuous_actions=False))
+# env = flatten_v0(simple_v2.env(max_cycles=50, continuous_actions=False))
 
 
 def test(agents, device):
+    seeds = 0
     total_reward = 0
-    for _ in range(5):
-        env.reset()
+    for _ in range(10):
+        env.reset(seeds)
+        seeds += 1
         for agent in env.agent_iter():
             observation, reward, done, info = env.last()
             if done:
@@ -36,6 +38,9 @@ def display_model(path):
         env.action_space(env.agent_selection).n,
         agent_names,
         device,
+        buffer_size=None,
+        batch_size=None,
+        num_updates=None,
     )
     agents.load_model(path)
     total_reward = 0
