@@ -34,7 +34,7 @@ torch.manual_seed(0)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 observations = env.reset()
-agents = IDQN( env.action_space.n ,env.observation_space.shape[0], agent_names, device)
+agents = IDQN( env.observation_space.shape[0],env.action_space.n , agent_names, device)
 
 # Training loop
 total_reward = 0

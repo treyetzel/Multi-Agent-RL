@@ -45,5 +45,5 @@ def display_model(path):
 
     return total_reward/10
 
-path = "./agents/idqn/models/idqn_model/"
-display_model(path)
+#path = "./agents/idqn/models/idqn_model/"
+#display_model(path)
