@@ -4,9 +4,12 @@ from pettingzoo.butterfly import knights_archers_zombies_v10
 from pettingzoo.mpe import simple_v2
 from supersuit import flatten_v0
 from agents.idqn import IDQN
-#env = flatten_v0(knights_archers_zombies_v10.env(use_typemasks=True))
 
-env = flatten_v0(simple_v2.env(max_cycles=200, continuous_actions=False))
+# env = flatten_v0(knights_archers_zombies_v10.env(use_typemasks=True))
+
+env = flatten_v0(simple_v2.env(max_cycles=50, continuous_actions=False))
+
+
 def test(agents, device):
     total_reward = 0
     for _ in range(5):
@@ -21,13 +24,19 @@ def test(agents, device):
             env.step(action)
             total_reward += reward
 
-    return total_reward/10
+    return total_reward / 10
+
 
 def display_model(path):
     env.reset()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     agent_names = env.agents
-    agents = IDQN(env.observation_space(env.agent_selection).shape[0], env.action_space(env.agent_selection).n, agent_names,device)
+    agents = IDQN(
+        env.observation_space(env.agent_selection).shape[0],
+        env.action_space(env.agent_selection).n,
+        agent_names,
+        device,
+    )
     agents.load_model(path)
     total_reward = 0
     for _ in range(20):
@@ -43,7 +52,9 @@ def display_model(path):
             env.render("human")
             total_reward += reward
 
-    return total_reward/10
+    return total_reward / 10
 
-#path = "./agents/idqn/models/idqn_model/"
-#display_model(path)
+
+if __name__ == "__main__":
+    path = "./agents/idqn/models/idqn_model/"
+    print(display_model(path))
