@@ -1,6 +1,7 @@
 import collections
 import torch
 import random
+import numpy as np
 
 
 class ReplayBuffer:
@@ -13,22 +14,27 @@ class ReplayBuffer:
 
     def sample(self, n):
         mini_batch = random.sample(self.buffer, n)
-        s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
+        obs_shape = mini_batch[0][0].shape[0]
+        obs_ar = np.empty((n, obs_shape))
+        a_ar = np.empty((n, 1))
+        r_ar = np.empty((n, 1))
+        obs_prime_ar = np.empty((n, obs_shape))
+        done_ar = np.empty((n, 1))
 
-        for transition in mini_batch:
+        for i, transition in enumerate(mini_batch):
             s, a, r, s_prime, done = transition
-            s_lst.append(s)
-            a_lst.append(a)
-            r_lst.append(r)
-            s_prime_lst.append(s_prime)
-            done_mask_lst.append(done)
+            obs_ar[i] = s
+            a_ar[i] = a
+            r_ar[i] = r
+            obs_prime_ar[i] = s_prime
+            done_ar[i] = done
 
         return (
-            torch.tensor(s_lst, dtype=torch.float).to(self.device),
-            torch.tensor(a_lst, dtype=torch.float).to(self.device),
-            torch.tensor(r_lst, dtype=torch.float).to(self.device),
-            torch.tensor(s_prime_lst, dtype=torch.float).to(self.device),
-            torch.tensor(done_mask_lst, dtype=torch.float).to(self.device),
+            torch.tensor(obs_ar, dtype=torch.float).to(self.device),
+            torch.tensor(a_ar, dtype=torch.float).to(self.device),
+            torch.tensor(r_ar, dtype=torch.float).to(self.device),
+            torch.tensor(obs_prime_ar, dtype=torch.float).to(self.device),
+            torch.tensor(done_ar, dtype=torch.float).to(self.device),
         )
 
     def size(self):
