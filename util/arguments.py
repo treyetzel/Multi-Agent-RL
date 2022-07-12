@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser(description='RL')
 parser.add_argument(
     '--max_steps',
     type=int,
-    default=10000,
+    default=50000,
     help='max steps to train models on')
 
 parser.add_argument(
@@ -18,19 +18,19 @@ parser.add_argument(
 parser.add_argument(
     '--log_steps',
     type=int,
-    default=2000,
+    default=2500,
     help='Number of steps to log')
 
 parser.add_argument(
     '--warm_up_steps',
     type=int,
-    default=1000,
+    default=5000,
     help='Number of steps to explore before training')
 
 parser.add_argument(
     '--k_step',
     type=int,
-    default=5,
+    default=4,
     help='update main networks every k step')
 
 # IDQN parameters
@@ -43,7 +43,7 @@ parser.add_argument(
 parser.add_argument(
     '--buffer_size',
     type=int,
-    default=5000,
+    default=10000,
     help='buffer size per agent')
 
 parser.add_argument(
