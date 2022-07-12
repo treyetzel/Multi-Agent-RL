@@ -19,6 +19,7 @@ class IDQN:
         observation_space,
         action_space,
         agent_names,
+        training_steps,
         device,
         buffer_size,
         batch_size,
@@ -29,14 +30,15 @@ class IDQN:
         self.agent_names = agent_names
         self.gamma = gamma
         self.action_space = action_space
+        self.training_steps = training_steps  # used for epsilon annealing
         self.lr = lr
         self.q_nets = {}
         self.target_nets = {}
         self.buffers = {}
         self.optimizers = {}
         self.epsilon = 1.0  # exploration probability at start
+        self.explore_probability = 1.0
         self.epsilon_min = 0.01  # minimum exploration probability
-        self.epsilon_decay = 0.0005  # exponential decay rate for exploration prob
         self.batch_size = batch_size
         self.num_updates = num_updates
         # initialize agents
@@ -63,13 +65,15 @@ class IDQN:
     def store(self, agent_name, transition):
         self.buffers[agent_name].put(transition)
 
-    def act(self, observations, decay_step):
-        explore_probability = self.epsilon_min + (
-            self.epsilon - self.epsilon_min
-        ) * np.exp(-self.epsilon_decay * decay_step)
+    def act(self, observations):
+        if self.explore_probability > self.epsilon_min:
+            self.explore_probability -= (
+                self.epsilon - self.epsilon_min
+            ) / self.training_steps
+
         max_prob = random.random()
         actions = None
-        if max_prob > explore_probability:
+        if max_prob > self.explore_probability:
             for agent_i in range(len(self.agent_names)):
                 obs_i = observations[
                     agent_i : observations.shape[0] : len(self.agent_names)
@@ -101,23 +105,30 @@ class IDQN:
                 obs, a, r, obs_prime, done_mask = self.buffers[agent].sample(
                     self.batch_size
                 )
-                q_vals = self.q_nets[agent].forward(obs)
-                q_a = q_vals.gather(1, a.unsqueeze(-1).long()).squeeze(-1)
 
+                q_vals = self.q_nets[agent].forward(obs)
+                q_a = q_vals.gather(1, a.long()).squeeze(-1)
+                # print(q_a.shape)
                 with torch.no_grad():
                     max_q_prime = (
                         self.target_nets[agent].forward(obs_prime).max(dim=1)[0]
                     )
 
-                target = r + self.gamma * max_q_prime * done_mask
+                target = r.squeeze(-1) + self.gamma * max_q_prime * done_mask.squeeze(
+                    -1
+                )
                 loss = F.smooth_l1_loss(q_a, target)
                 self.optimizers[agent].zero_grad()
                 loss.backward()
                 self.optimizers[agent].step()
-
                 self._soft_update_target(
-                    self.q_nets[agent], self.target_nets[agent], 0.01
+                    self.q_nets[agent],
+                    self.target_nets[agent],
+                    0.01,  # TODO: Add this as a hyperparameter probably (tau) for updating target nets
                 )
+
+    def log(self):
+        return self.explore_probability
 
     def save_model(self, path):
         if not os.path.exists(path):

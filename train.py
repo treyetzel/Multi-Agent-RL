@@ -28,26 +28,30 @@ if USE_WANDB:
     wandb.init(project="Multi-Agent-RL", entity="kevduong", config=configs)
 
 # TODO: handle way to create env from args, need to handle for test as well
-env = "knights_and_archers"
 
-env = black_death_v3(knights_archers_zombies_v10.env(use_typemasks=True))
-# env = simple_v2.env(max_cycles=50, continuous_actions=False)
+# env = black_death_v3(knights_archers_zombies_v10.env(use_typemasks=True))
+env = simple_v2.env(max_cycles=50, continuous_actions=False)
 env.reset()
 agent_names = env.agents
 env = aec_to_parallel(flatten_v0(env))
 env = pettingzoo_env_to_vec_env_v1(env)
 env = concat_vec_envs_v1(env, args.num_envs, num_cpus=0, base_class="gym")
 
-# TODO: Finish seeding, all seeds are set to 0 right now, add as arg
+# TODO: Finish seeding, all seeds are set to 0 right now, add as arg and go through all randoms (including numpy randoms)
 torch.manual_seed(0)
 
 # TODO: add .train() for nets https://discuss.pytorch.org/t/model-train-and-model-eval-vs-model-and-model-eval/5744
+
+max_paralell_steps = args.max_steps // args.num_envs
+running_log_steps = 0  # number of steps since last log
+warm_up_steps = args.warm_up_steps // args.num_envs
 
 observations = env.reset(seed=0)
 agents = IDQN(
     observation_space=env.observation_space.shape[0],
     action_space=env.action_space.n,
     agent_names=agent_names,
+    training_steps=max_paralell_steps,
     device=device,
     buffer_size=args.buffer_size,
     lr=args.lr,
@@ -56,16 +60,11 @@ agents = IDQN(
     num_updates=args.num_updates,
 )
 
-max_paralell_steps = args.max_steps // args.num_envs
-running_log_steps = 0  # number of steps since last log
-warm_up_steps = args.warm_up_steps // args.num_envs
 
 # Training loop
 for steps in range(1, max_paralell_steps + 1):
     with torch.no_grad():
-        actions = agents.act(
-            observations, decay_step=0 if steps < warm_up_steps else steps
-        )
+        actions = agents.act(observations)
 
     observations_prime, rewards, dones, info = env.step(actions.flatten())
 
@@ -104,6 +103,8 @@ for steps in range(1, max_paralell_steps + 1):
         if USE_WANDB:
             wandb.log({"test_avg_reward": avg_rew}, step=steps * args.num_envs)
         running_log_steps = 0
+        epsilon = agents.log()
+        print(f"epsilon: {epsilon}")
 
 path = "./agents/idqn/models/idqn_model/"
 
