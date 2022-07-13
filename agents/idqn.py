@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import random
 from .models.idqn_models import QNet_FC
-from .storage import ReplayBuffer
+from .storage import ReplayBuffer, PrioritizedReplayBuffer
 
 random.seed(0)
 np.random.seed(0)
@@ -28,6 +28,7 @@ class IDQN:
         gamma=0.99,
     ):
         self.agent_names = agent_names
+        self.device = device
         self.gamma = gamma
         self.action_space = action_space
         self.training_steps = training_steps  # used for epsilon annealing
@@ -43,7 +44,7 @@ class IDQN:
         self.num_updates = num_updates
         # initialize agents
         for agent in agent_names:
-            new_buffer = ReplayBuffer(buffer_size, device)
+            new_buffer = PrioritizedReplayBuffer(buffer_size, observation_space, device)
             q_net = QNet_FC(observation_space, self.action_space).to(device)
             target_net = QNet_FC(observation_space, self.action_space).to(device)
             target_net.load_state_dict(q_net.state_dict())
@@ -63,7 +64,21 @@ class IDQN:
             )
 
     def store(self, agent_name, transition):
-        self.buffers[agent_name].put(transition)
+        if isinstance(self.buffers, ReplayBuffer):
+            self.buffers[agent_name].put(transition)
+        else:
+            obs, a, r, obs_prime, done_mask = transition
+            with torch.no_grad():
+                q_val = self.q_nets[agent_name](torch.Tensor(obs).to(self.device))
+                max_q_prime = self.target_nets[agent_name](
+                    torch.Tensor(obs_prime).to(self.device)
+                ).max()
+
+            target = r + self.gamma * max_q_prime.cpu().numpy() * done_mask
+
+            q_val_a = q_val[a].cpu().numpy()
+            error = abs(target - q_val_a)
+            self.buffers[agent_name].add(error, transition)
 
     def act(self, observations):
         if self.explore_probability > self.epsilon_min:
@@ -102,9 +117,9 @@ class IDQN:
     def update(self):
         for agent in self.agent_names:
             for update in range(self.num_updates):
-                obs, a, r, obs_prime, done_mask = self.buffers[agent].sample(
-                    self.batch_size
-                )
+                obs, a, r, obs_prime, done_mask, idxs, is_weights = self.buffers[
+                    agent
+                ].sample(self.batch_size)
 
                 q_vals = self.q_nets[agent].forward(obs)
                 q_a = q_vals.gather(1, a.long()).squeeze(-1)
@@ -117,7 +132,19 @@ class IDQN:
                 target = r.squeeze(-1) + self.gamma * max_q_prime * done_mask.squeeze(
                     -1
                 )
-                loss = F.smooth_l1_loss(q_a, target)
+
+                errors = torch.abs(target - q_a).detach().cpu().numpy()
+
+                # update priorities
+                for i in range(self.batch_size):
+                    idx = idxs[i]
+                    self.buffers[agent].update(idx, errors[i])
+
+                loss = (
+                    torch.Tensor(is_weights).to(self.device)
+                    * F.smooth_l1_loss(q_a, target, reduction="none")
+                ).mean()
+
                 self.optimizers[agent].zero_grad()
                 loss.backward()
                 self.optimizers[agent].step()
