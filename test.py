@@ -51,7 +51,9 @@ def display_model(path):
             if done:
                 action = None
             else:
-                q_vals = agents.q_nets[agent](torch.Tensor(observation).to(device))
+                q_vals = agents.q_nets[agent](
+                    torch.Tensor(observation).unsqueeze(0).to(device)
+                )
                 action = q_vals.argmax().item()
             env.step(action)
             env.render("human")
