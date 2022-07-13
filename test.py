@@ -1,13 +1,14 @@
 from functools import total_ordering
 import torch
-from pettingzoo.butterfly import knights_archers_zombies_v10
+from pettingzoo.butterfly import knights_archers_zombies_v10, cooperative_pong_v5
 from pettingzoo.mpe import simple_v2
-from supersuit import flatten_v0
+from supersuit import flatten_v0, color_reduction_v0
 from agents.idqn import IDQN
+import time
 
-env = flatten_v0(knights_archers_zombies_v10.env(use_typemasks=True))
-
-# env = flatten_v0(simple_v2.env(max_cycles=50, continuous_actions=False))
+env = color_reduction_v0(cooperative_pong_v5.env(), mode="full")
+#  env = flatten_v0(knights_archers_zombies_v10.env(use_typemasks=True))
+#  env = flatten_v0(simple_v2.env(max_cycles=50, continuous_actions=False))
 
 
 def test(agents, device):
@@ -21,7 +22,9 @@ def test(agents, device):
             if done:
                 action = None
             else:
-                q_vals = agents.q_nets[agent](torch.Tensor(observation).to(device))
+                q_vals = agents.q_nets[agent](
+                    torch.Tensor(observation).unsqueeze(0).to(device)
+                )
                 action = q_vals.argmax().item()
             env.step(action)
             total_reward += reward
@@ -34,13 +37,10 @@ def display_model(path):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     agent_names = env.agents
     agents = IDQN(
-        env.observation_space(env.agent_selection).shape[0],
+        env.observation_space(env.agent_selection),
         env.action_space(env.agent_selection).n,
         agent_names,
         device,
-        buffer_size=None,
-        batch_size=None,
-        num_updates=None,
     )
     agents.load_model(path)
     total_reward = 0
@@ -56,7 +56,6 @@ def display_model(path):
             env.step(action)
             env.render("human")
             total_reward += reward
-
     return total_reward / 10
 
 

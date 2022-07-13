@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import random
-from .models.idqn_models import QNet_FC
+from .models.idqn_models import QNet_FC, QNet_Nature_CNN
 from .storage import ReplayBuffer, PrioritizedReplayBuffer
 
 random.seed(0)
@@ -45,8 +45,13 @@ class IDQN:
         # initialize agents
         for agent in agent_names:
             new_buffer = PrioritizedReplayBuffer(buffer_size, observation_space, device)
-            q_net = QNet_FC(observation_space, self.action_space).to(device)
-            target_net = QNet_FC(observation_space, self.action_space).to(device)
+            # q_net = QNet_FC(observation_space.shape[0], self.action_space).to(device)
+            # target_net = QNet_FC(observation_space.shape[0], self.action_space).to(device)
+            q_net = QNet_Nature_CNN(observation_space, self.action_space).to(device)
+            target_net = QNet_Nature_CNN(observation_space, self.action_space).to(
+                device
+            )
+
             target_net.load_state_dict(q_net.state_dict())
             optimizer = optim.Adam(q_net.parameters(), lr=lr)
 
@@ -68,16 +73,25 @@ class IDQN:
             self.buffers[agent_name].put(transition)
         else:
             obs, a, r, obs_prime, done_mask = transition
+            if isinstance(self.q_nets[agent_name], QNet_Nature_CNN):
+                obs = torch.Tensor(obs).unsqueeze(0).to(self.device)
+                obs_prime = torch.Tensor(obs_prime).unsqueeze(0).to(self.device)
+
+            else:
+                obs = torch.Tensor(obs).to(self.device)
+                obs_prime = torch.Tensor(obs_prime).to(self.device)
+                q_val_a = q_val[a].cpu().numpy()
+
             with torch.no_grad():
-                q_val = self.q_nets[agent_name](torch.Tensor(obs).to(self.device))
-                max_q_prime = self.target_nets[agent_name](
-                    torch.Tensor(obs_prime).to(self.device)
-                ).max()
+                q_val = self.q_nets[agent_name](obs)
+                max_q_prime = self.target_nets[agent_name](obs_prime).max()
+
+            q_val_a = q_val[a].cpu().numpy()
 
             target = r + self.gamma * max_q_prime.cpu().numpy() * done_mask
 
-            q_val_a = q_val[a].cpu().numpy()
             error = abs(target - q_val_a)
+
             self.buffers[agent_name].add(error, transition)
 
     def act(self, observations):
@@ -93,9 +107,12 @@ class IDQN:
                 obs_i = observations[
                     agent_i : observations.shape[0] : len(self.agent_names)
                 ]
-                q_vals_i = self.q_nets[self.agent_names[agent_i]].forward(
-                    torch.Tensor(obs_i).to("cuda:0")
-                )
+                if obs_i.ndim == 3:
+                    obs_i = torch.Tensor(obs_i).unsqueeze(1).to("cuda:0")
+                else:
+                    obs_i = torch.Tensor(obs_i).to("cuda:0")
+
+                q_vals_i = self.q_nets[self.agent_names[agent_i]].forward(obs_i)
                 q_tuple = q_vals_i.max(dim=1)
                 q_vals_i = q_tuple[0]
                 action_i = q_tuple[1]
@@ -113,15 +130,18 @@ class IDQN:
 
         return actions
 
-    # TODO: Add these to IDQN params
     def update(self):
         for agent in self.agent_names:
             for update in range(self.num_updates):
                 obs, a, r, obs_prime, done_mask, idxs, is_weights = self.buffers[
                     agent
                 ].sample(self.batch_size)
+                if obs.dim() == 3:
+                    obs = obs.unsqueeze(1)
+                    obs_prime = obs_prime.unsqueeze(1)
 
                 q_vals = self.q_nets[agent].forward(obs)
+
                 q_a = q_vals.gather(1, a.long()).squeeze(-1)
                 # print(q_a.shape)
                 with torch.no_grad():
@@ -151,7 +171,7 @@ class IDQN:
                 self._soft_update_target(
                     self.q_nets[agent],
                     self.target_nets[agent],
-                    0.01,  # TODO: Add this as a hyperparameter probably (tau) for updating target nets
+                    0.01,  # TODO: Add this as a hyperparameter maybe? (tau) for updating target nets
                 )
 
     def log(self):

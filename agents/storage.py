@@ -133,10 +133,11 @@ class PrioritizedReplayBuffer:  # stored as ( s, a, r, s_ ) in SumTree
         self.tree.add(p, sample)
 
     def sample(self, n):
-        obs_ar = np.empty((n, self.obs_shape))
+
+        obs_ar = np.empty((n, *self.obs_shape.shape))
         a_ar = np.empty((n, 1))
         r_ar = np.empty((n, 1))
-        obs_prime_ar = np.empty((n, self.obs_shape))
+        obs_prime_ar = np.empty((n, *self.obs_shape.shape))
         done_ar = np.empty((n, 1))
         idxs = []
         priorities = []
