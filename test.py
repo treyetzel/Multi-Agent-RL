@@ -38,9 +38,6 @@ def display_model(path):
         env.action_space(env.agent_selection).n,
         agent_names,
         device,
-        buffer_size=None,
-        batch_size=None,
-        num_updates=None,
     )
     agents.load_model(path)
     total_reward = 0
