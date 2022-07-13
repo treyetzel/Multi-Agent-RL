@@ -6,25 +6,25 @@ parser = argparse.ArgumentParser(description='RL')
 parser.add_argument(
     '--max_steps',
     type=int,
-    default=50000,
+    default=200000,
     help='max steps to train models on')
-
-parser.add_argument(
-    '--num_envs',
-    type=int,
-    default=8,
-    help='Number of parallel environments to collect experiences from')
 
 parser.add_argument(
     '--log_steps',
     type=int,
-    default=2500,
+    default=2000,
     help='Number of steps to log')
+
+parser.add_argument(
+    '--num_envs',
+    type=int,
+    default=24,
+    help='Number of parallel environments to collect experiences from')
 
 parser.add_argument(
     '--warm_up_steps',
     type=int,
-    default=5000,
+    default=2000,
     help='Number of steps to explore before training')
 
 parser.add_argument(
