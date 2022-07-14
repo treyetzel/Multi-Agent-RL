@@ -17,6 +17,9 @@ pip install supersuit
 pip install pettingzoo[all]
 ```
 wandb is optional, you can create an account [here](https://wandb.ai/site), or set --wandb to False when running the training file
+```bash 
+pip install wandb
+```
 ## Usage
 
 ```bash
