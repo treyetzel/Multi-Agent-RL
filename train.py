@@ -2,7 +2,8 @@ from test import test
 import wandb
 import numpy as np
 import torch
-from pettingzoo.butterfly import knights_archers_zombies_v10
+from util.envs import get_env, parallel_env
+from pettingzoo.butterfly import knights_archers_zombies_v10, cooperative_pong_v5
 from pettingzoo.mpe import simple_v2
 from pettingzoo.utils.conversions import aec_to_parallel
 from supersuit import (
@@ -10,7 +11,9 @@ from supersuit import (
     concat_vec_envs_v1,
     flatten_v0,
     pettingzoo_env_to_vec_env_v1,
+    color_reduction_v0,
 )
+
 from agents.idqn import IDQN
 from agents.util.arguments import parser
 
@@ -27,15 +30,8 @@ for arg in vars(args):
 if USE_WANDB:
     wandb.init(project="Multi-Agent-RL", entity="kevduong", config=configs)
 
-# TODO: handle way to create env from args, need to handle for test as well
-
-# env = black_death_v3(knights_archers_zombies_v10.env(use_typemasks=True))
-env = simple_v2.env(max_cycles=50, continuous_actions=False)
-env.reset()
-agent_names = env.agents
-env = aec_to_parallel(flatten_v0(env))
-env = pettingzoo_env_to_vec_env_v1(env)
-env = concat_vec_envs_v1(env, args.num_envs, num_cpus=0, base_class="gym")
+env, agent_names, is_image = get_env(args.env)
+env = parallel_env(env, args.num_envs)
 
 # TODO: Finish seeding, all seeds are set to 0 right now, add as arg and go through all randoms (including numpy randoms)
 torch.manual_seed(0)
@@ -48,7 +44,7 @@ warm_up_steps = args.warm_up_steps // args.num_envs
 
 observations = env.reset(seed=0)
 agents = IDQN(
-    observation_space=env.observation_space.shape[0],
+    observation_space=env.observation_space,
     action_space=env.action_space.n,
     agent_names=agent_names,
     training_steps=max_paralell_steps,
@@ -67,7 +63,6 @@ for steps in range(1, max_paralell_steps + 1):
         actions = agents.act(observations)
 
     observations_prime, rewards, dones, info = env.step(actions.flatten())
-
     # splitting transitions for separate agents, and storing in replay buffer
     for agent_i in range(len(agent_names)):
         obs_i = observations[agent_i : observations.shape[0] : len(agent_names)]
