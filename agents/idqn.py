@@ -7,10 +7,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 import random
 from .models.idqn_models import QNet_FC, QNet_Nature_CNN
-from .storage import ReplayBuffer, PrioritizedReplayBuffer
+from .util.storage import PrioritizedReplayBuffer
 
-random.seed(0)
-np.random.seed(0)
+
 
 
 class IDQN:
@@ -27,6 +26,7 @@ class IDQN:
         lr=0.0005,
         gamma=0.99,
         is_image=False,
+        seed=None,
     ):
         self.agent_names = agent_names
         self.device = device
@@ -44,6 +44,9 @@ class IDQN:
         self.batch_size = batch_size
         self.num_updates = num_updates
         self.is_image = is_image
+        if seed != None:
+            random.seed(seed)
+            np.random.seed(seed)
         # initialize agents
         for agent in agent_names:
             new_buffer = PrioritizedReplayBuffer(buffer_size, observation_space, device)
@@ -74,28 +77,25 @@ class IDQN:
             )
 
     def store(self, agent_name, transition):
-        if isinstance(self.buffers, ReplayBuffer):
-            self.buffers[agent_name].put(transition)
+        obs, a, r, obs_prime, done_mask = transition
+        if self.is_image:
+            obs = torch.Tensor(obs).unsqueeze(0).to(self.device)
+            obs_prime = torch.Tensor(obs_prime).unsqueeze(0).to(self.device)
         else:
-            obs, a, r, obs_prime, done_mask = transition
-            if self.is_image:
-                obs = torch.Tensor(obs).unsqueeze(0).to(self.device)
-                obs_prime = torch.Tensor(obs_prime).unsqueeze(0).to(self.device)
-            else:
-                obs = torch.Tensor(obs).to(self.device)
-                obs_prime = torch.Tensor(obs_prime).to(self.device)
+            obs = torch.Tensor(obs).to(self.device)
+            obs_prime = torch.Tensor(obs_prime).to(self.device)
 
-            with torch.no_grad():
-                q_val = self.q_nets[agent_name](obs)
-                max_q_prime = self.target_nets[agent_name](obs_prime).max()
+        with torch.no_grad():
+            q_val = self.q_nets[agent_name](obs)
+            max_q_prime = self.target_nets[agent_name](obs_prime).max()
 
-            q_val_a = q_val[a].cpu().numpy()
+        q_val_a = q_val[a].cpu().numpy()
 
-            target = r + self.gamma * max_q_prime.cpu().numpy() * done_mask
+        target = r + self.gamma * max_q_prime.cpu().numpy() * done_mask
 
-            error = abs(target - q_val_a)
+        error = abs(target - q_val_a)
 
-            self.buffers[agent_name].add(error, transition)
+        self.buffers[agent_name].add(error, transition)
 
     def act(self, observations):
         if self.explore_probability > self.epsilon_min:
@@ -139,14 +139,13 @@ class IDQN:
                 obs, a, r, obs_prime, done_mask, idxs, is_weights = self.buffers[
                     agent
                 ].sample(self.batch_size)
+
                 if obs.dim() == 3:
                     obs = obs.unsqueeze(1)
                     obs_prime = obs_prime.unsqueeze(1)
 
                 q_vals = self.q_nets[agent].forward(obs)
-
                 q_a = q_vals.gather(1, a.long()).squeeze(-1)
-                # print(q_a.shape)
                 with torch.no_grad():
                     max_q_prime = (
                         self.target_nets[agent].forward(obs_prime).max(dim=1)[0]

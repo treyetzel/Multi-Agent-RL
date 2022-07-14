@@ -1,8 +1,8 @@
 from functools import total_ordering
 import torch
 from agents.idqn import IDQN
-from util.arguments import parser
-from util.envs import get_env
+from agents.util.arguments import parser
+from agents.util.envs import get_env
 args = parser.parse_args()
 env, agent_names, is_image = get_env(args.env)
 
@@ -36,6 +36,7 @@ def display_model(path):
         env.action_space(env.agent_selection).n,
         agent_names,
         device,
+        is_image=is_image
     )
     agents.load_model(path)
     total_reward = 0

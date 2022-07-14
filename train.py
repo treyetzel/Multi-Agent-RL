@@ -1,24 +1,13 @@
 from test import test
-import wandb
-import numpy as np
+
 import torch
-from util.envs import get_env, parallel_env
-from pettingzoo.butterfly import knights_archers_zombies_v10, cooperative_pong_v5
-from pettingzoo.mpe import simple_v2
-from pettingzoo.utils.conversions import aec_to_parallel
-from supersuit import (
-    black_death_v3,
-    concat_vec_envs_v1,
-    flatten_v0,
-    pettingzoo_env_to_vec_env_v1,
-    color_reduction_v0,
-)
+import wandb
 
 from agents.idqn import IDQN
 from agents.util.arguments import parser
+from agents.util.envs import get_env, parallel_env
 
 USE_WANDB = False
-
 
 torch.set_default_dtype(torch.float32)
 args = parser.parse_args()
@@ -34,15 +23,16 @@ env, agent_names, is_image = get_env(args.env)
 env = parallel_env(env, args.num_envs)
 
 # TODO: Finish seeding, all seeds are set to 0 right now, add as arg and go through all randoms (including numpy randoms)
-torch.manual_seed(0)
+
 
 # TODO: add .train() for nets https://discuss.pytorch.org/t/model-train-and-model-eval-vs-model-and-model-eval/5744
 
 max_paralell_steps = args.max_steps // args.num_envs
 running_log_steps = 0  # number of steps since last log
 warm_up_steps = args.warm_up_steps // args.num_envs
-
-observations = env.reset(seed=0)
+seed = args.seed
+observations = env.reset(seed=seed)
+torch.manual_seed(seed)
 agents = IDQN(
     observation_space=env.observation_space,
     action_space=env.action_space.n,
@@ -54,6 +44,7 @@ agents = IDQN(
     gamma=args.gamma,
     batch_size=args.batch_size,
     num_updates=args.num_updates,
+    seed=seed,
 )
 
 
@@ -101,7 +92,7 @@ for steps in range(1, max_paralell_steps + 1):
         epsilon = agents.log()
         print(f"epsilon: {epsilon}")
 
-path = "./agents/idqn/models/idqn_model/"
+path = "./saved_models/{}/".format(args.env)
 
 env.close()
 agents.save_model(path)
