@@ -26,6 +26,7 @@ class IDQN:
         num_updates=10,
         lr=0.0005,
         gamma=0.99,
+        is_image=False,
     ):
         self.agent_names = agent_names
         self.device = device
@@ -42,15 +43,19 @@ class IDQN:
         self.epsilon_min = 0.01  # minimum exploration probability
         self.batch_size = batch_size
         self.num_updates = num_updates
+        self.is_image = is_image
         # initialize agents
         for agent in agent_names:
             new_buffer = PrioritizedReplayBuffer(buffer_size, observation_space, device)
-            # q_net = QNet_FC(observation_space.shape[0], self.action_space).to(device)
-            # target_net = QNet_FC(observation_space.shape[0], self.action_space).to(device)
-            q_net = QNet_Nature_CNN(observation_space, self.action_space).to(device)
-            target_net = QNet_Nature_CNN(observation_space, self.action_space).to(
-                device
-            )
+            if is_image:
+                q_net = QNet_Nature_CNN(observation_space, self.action_space).to(device)
+                target_net = QNet_Nature_CNN(observation_space, self.action_space).to(
+                    device
+                )
+            else:
+                q_net = QNet_FC(observation_space.shape[0], self.action_space).to(device)
+                target_net = QNet_FC(observation_space.shape[0], self.action_space).to(device)
+
 
             target_net.load_state_dict(q_net.state_dict())
             optimizer = optim.Adam(q_net.parameters(), lr=lr)
@@ -73,14 +78,12 @@ class IDQN:
             self.buffers[agent_name].put(transition)
         else:
             obs, a, r, obs_prime, done_mask = transition
-            if isinstance(self.q_nets[agent_name], QNet_Nature_CNN):
+            if self.is_image:
                 obs = torch.Tensor(obs).unsqueeze(0).to(self.device)
                 obs_prime = torch.Tensor(obs_prime).unsqueeze(0).to(self.device)
-
             else:
                 obs = torch.Tensor(obs).to(self.device)
                 obs_prime = torch.Tensor(obs_prime).to(self.device)
-                q_val_a = q_val[a].cpu().numpy()
 
             with torch.no_grad():
                 q_val = self.q_nets[agent_name](obs)

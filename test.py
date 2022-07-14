@@ -1,15 +1,10 @@
 from functools import total_ordering
 import torch
-from pettingzoo.butterfly import knights_archers_zombies_v10, cooperative_pong_v5
-from pettingzoo.mpe import simple_v2
-from supersuit import flatten_v0, color_reduction_v0
 from agents.idqn import IDQN
-import time
-
-env = color_reduction_v0(cooperative_pong_v5.env(), mode="full")
-#  env = flatten_v0(knights_archers_zombies_v10.env(use_typemasks=True))
-#  env = flatten_v0(simple_v2.env(max_cycles=50, continuous_actions=False))
-
+from util.arguments import parser
+from util.envs import get_env
+args = parser.parse_args()
+env, agent_names, is_image = get_env(args.env)
 
 def test(agents, device):
     seeds = 0
