@@ -12,7 +12,7 @@ from supersuit import (
     pettingzoo_env_to_vec_env_v1,
 )
 from agents.idqn import IDQN
-from util.arguments import parser
+from agents.util.arguments import parser
 
 USE_WANDB = False
 
