@@ -21,6 +21,3 @@ wandb is option, you can create an account [here](https://wandb.ai/site), or set
 
 ```bash
 python train.py --wandb False
-```
-
-## Algorithms
