@@ -16,7 +16,7 @@ install pytorch and cuda here: https://pytorch.org/get-started/locally/
 pip install supersuit
 pip install pettingzoo[all]
 ```
-wandb is option, you can create an account [here](https://wandb.ai/site), or set --wandb to False when running the training file
+wandb is optional, you can create an account [here](https://wandb.ai/site), or set --wandb to False when running the training file
 ## Usage
 
 ```bash
