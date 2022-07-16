@@ -3,9 +3,9 @@ from test import test
 import torch
 import wandb
 
-from agents.idqn import IDQN
-from agents.util.arguments import parser
-from agents.util.envs import get_env, parallel_env
+from source.idqn import IDQN
+from source.util.arguments import parser
+from source.util.envs import get_env, parallel_env
 
 USE_WANDB = False
 

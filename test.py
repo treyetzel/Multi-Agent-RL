@@ -1,8 +1,8 @@
 from functools import total_ordering
 import torch
-from agents.idqn import IDQN
-from agents.util.arguments import parser
-from agents.util.envs import get_env
+from source.idqn import IDQN
+from source.util.arguments import parser
+from source.util.envs import get_env
 args = parser.parse_args()
 env, agent_names, is_image = get_env(args.env)
 

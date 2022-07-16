@@ -2,9 +2,7 @@ import torch
 import random
 import numpy as np
 # SumTree
-# a binary tree data structure where the parent’s value is the sum of its children
-# visualization of representing binary trees as arrays
-# http://www.btechsmartclass.com/data_structures/binary-tree-representations.html
+# https://adventuresinmachinelearning.com/sumtree-introduction-python/
 class SumTree:
     write = 0
 
@@ -68,7 +66,7 @@ class SumTree:
         return (idx, self.tree[idx], self.data[dataIdx])
 
 
-class PrioritizedReplayBuffer:  # stored as ( s, a, r, s_ ) in SumTree
+class PrioritizedReplayBuffer:
 
     e = 0.01  # Hyperparameter that we use to avoid some experiences to have 0 probability of being taken
     a = 0.6  # Hyperparameter that we use to make a tradeoff between taking only exp with high priority and sampling randomly

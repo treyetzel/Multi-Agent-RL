@@ -12,13 +12,16 @@ class QNet_FC(nn.Module):
     def __init__(self, obs, action_space):
         super(QNet_FC, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(obs, 512), nn.ReLU(), nn.Linear(512, action_space)
+            nn.Linear(obs, 512),
+             nn.ReLU(),
+              nn.Linear(512, action_space)
         )
 
     def forward(self, x):
         q_vals = self.fc(x)
 
         return q_vals
+
 
 
 class QNet_Nature_CNN(nn.Module):
