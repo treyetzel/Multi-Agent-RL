@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser(description="RL")
 parser.add_argument(
     "--env", 
     type=str,
-    default='simple',
+    default='kaz',
     help="name of environment",
     choices=['kaz', 'simple', 'pong'],
 )
@@ -23,21 +23,21 @@ parser.add_argument(
 parser.add_argument(
     "--max_steps", 
     type=int,
-    default=10000,
+    default=1000000,
     help="max steps to train models on"
 )
 
 parser.add_argument(
     "--log_steps",
     type=int,
-    default=1000,
+    default=2000,
     help="Number of steps to log"
 )
 
 parser.add_argument(
     "--num_envs",
     type=int,
-    default=12,
+    default=64,
     help="Number of parallel environments to collect experiences from",
 )
 
@@ -72,7 +72,7 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size",
     type=int,
-    default=32,
+    default=64,
     help="batch size to sample from replay buffers",
 )
 

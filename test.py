@@ -17,6 +17,7 @@ def test(agents, device):
             if done:
                 action = None
             else:
+                agents.q_nets[agent].eval()
                 q_vals = agents.q_nets[agent](
                     torch.Tensor(observation).unsqueeze(0).to(device)
                 )

@@ -144,6 +144,7 @@ class IDQN:
                     obs = obs.unsqueeze(1)
                     obs_prime = obs_prime.unsqueeze(1)
 
+                self.q_nets[agent].train()
                 q_vals = self.q_nets[agent].forward(obs)
                 q_a = q_vals.gather(1, a.long()).squeeze(-1)
                 with torch.no_grad():
