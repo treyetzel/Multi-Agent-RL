@@ -11,16 +11,31 @@ class QNet_FC(nn.Module):
 
     def __init__(self, obs, action_space):
         super(QNet_FC, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(obs, 512),
-             nn.ReLU(),
-              nn.Linear(512, action_space)
+        self.feature_layer = nn.Sequential(
+            nn.Linear(obs, 128),
+            nn.ReLU(),
+            nn.Linear(128, 256),
+            nn.ReLU(),
+        )
+
+        self.advantage_stream = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, action_space),
+        )
+        
+        self.value_stream = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1),
         )
 
     def forward(self, x):
-        q_vals = self.fc(x)
+        features = self.feature_layer(x)
+        advantages = self.advantage_stream(features)
+        values = self.value_stream(features)
+        return advantages + (values - values.mean(dim=0, keepdim=True))
 
-        return q_vals
 
 
 
