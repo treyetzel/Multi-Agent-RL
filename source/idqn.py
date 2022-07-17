@@ -180,11 +180,11 @@ class IDQN:
     def log(self):
         return self.explore_probability
 
-    def save_model(self, path):
+    def save_model(self, path, seed):
         if not os.path.exists(path):
             os.makedirs(path)
         for agent in self.agent_names:
-            torch.save(self.q_nets[agent].state_dict(), path + agent + ".pt")
+            torch.save(self.q_nets[agent].state_dict(), path + agent + "_s-" + str(seed) +".pt")
 
     def load_model(self, path):
         for agent in self.agent_names:

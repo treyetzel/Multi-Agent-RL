@@ -37,7 +37,7 @@ parser.add_argument(
 parser.add_argument(
     "--num_envs",
     type=int,
-    default=64,
+    default=128,
     help="Number of parallel environments to collect experiences from",
 )
 
@@ -72,7 +72,7 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size",
     type=int,
-    default=64,
+    default=256,
     help="batch size to sample from replay buffers",
 )
 
