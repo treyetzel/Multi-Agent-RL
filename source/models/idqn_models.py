@@ -31,6 +31,7 @@ class QNet_FC(nn.Module):
         )
 
     def forward(self, x):
+        # Dueling DQN
         features = self.feature_layer(x)
         advantages = self.advantage_stream(features)
         values = self.value_stream(features)

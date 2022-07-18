@@ -148,14 +148,17 @@ class IDQN:
                 q_vals = self.q_nets[agent].forward(obs)
                 q_a = q_vals.gather(1, a.long()).squeeze(-1)
                 with torch.no_grad():
-                    max_q_prime = (
-                        self.target_nets[agent].forward(obs_prime).max(dim=1)[0]
+                    # (double dqn) get actions from online network to use on target values 
+                    q_prime_actions = self.q_nets[agent](obs_prime).argmax(dim=1).unsqueeze(1)
+                    q_primes = (
+                        self.target_nets[agent].forward(obs_prime)
                     )
+                    max_q_prime = q_primes.gather(1, q_prime_actions.long())
+                    
 
-                target = r.squeeze(-1) + self.gamma * max_q_prime * done_mask.squeeze(
-                    -1
-                )
+                target = (r + self.gamma * max_q_prime * done_mask).squeeze(-1)
 
+                
                 errors = torch.abs(target - q_a).detach().cpu().numpy()
 
                 # update priorities

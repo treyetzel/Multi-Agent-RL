@@ -95,4 +95,4 @@ for steps in range(1, max_paralell_steps + 1):
 path = "./saved_models/{}/".format(args.env)
 
 env.close()
-agents.save_model(path)
+agents.save_model(path, seed)
