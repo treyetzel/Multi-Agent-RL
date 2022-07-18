@@ -17,7 +17,7 @@ for arg in vars(args):
     configs[arg] = getattr(args, arg)
 
 if USE_WANDB:
-    wandb.init(project="Multi-Agent-RL", entity="kevduong", config=configs)
+    wandb.init(group=args.name, project="Multi-Agent-RL", entity="kevduong", config=configs)
 
 env, agent_names, is_image = get_env(args.env)
 env = parallel_env(env, args.num_envs)

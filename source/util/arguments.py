@@ -4,6 +4,14 @@ from click import option
 
 parser = argparse.ArgumentParser(description="RL")
 
+
+parser.add_argument(
+    "--name", 
+    type=str,
+    default='experiment',
+    help="name of the experiment to use for grouping in wandb",
+)
+
 # Training loop parameters
 parser.add_argument(
     "--env", 
