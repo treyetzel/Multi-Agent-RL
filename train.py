@@ -2,7 +2,7 @@ from test import test
 
 import torch
 import wandb
-
+import os
 from source.idqn import IDQN
 from source.util.arguments import parser
 from source.util.envs import get_env, parallel_env
@@ -18,14 +18,12 @@ for arg in vars(args):
 
 if USE_WANDB:
     wandb.init(project="Multi-Agent-RL", entity="kevduong", config=configs)
+    wandb.save("../source/models/idqn_models.py", policy="now")
+    wandb.save("../source/idqn.py", policy="now")
+
 
 env, agent_names, is_image = get_env(args.env)
 env = parallel_env(env, args.num_envs)
-
-# TODO: Finish seeding, all seeds are set to 0 right now, add as arg and go through all randoms (including numpy randoms)
-
-
-# TODO: add .train() for nets https://discuss.pytorch.org/t/model-train-and-model-eval-vs-model-and-model-eval/5744
 
 max_paralell_steps = args.max_steps // args.num_envs
 running_log_steps = 0  # number of steps since last log
@@ -85,12 +83,14 @@ for steps in range(1, max_paralell_steps + 1):
     running_log_steps += args.num_envs
     if running_log_steps >= args.log_steps or steps == max_paralell_steps:
         avg_rew = test(agents, device)
-        print(f"average rewards at step {steps*args.num_envs}: {avg_rew}")
+        
         if USE_WANDB:
             wandb.log({"test_avg_reward": avg_rew}, step=steps * args.num_envs)
+        else:
+            print(f"average rewards at step {steps*args.num_envs}: {avg_rew}")
+            epsilon = agents.log()
+            print(f"epsilon: {epsilon}")
         running_log_steps = 0
-        epsilon = agents.log()
-        print(f"epsilon: {epsilon}")
 
 path = "./saved_models/{}/".format(args.env)
 
