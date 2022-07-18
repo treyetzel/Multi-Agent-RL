@@ -7,7 +7,7 @@ from source.idqn import IDQN
 from source.util.arguments import parser
 from source.util.envs import get_env, parallel_env
 
-USE_WANDB = False
+USE_WANDB = True
 
 torch.set_default_dtype(torch.float32)
 args = parser.parse_args()
@@ -18,8 +18,8 @@ for arg in vars(args):
 
 if USE_WANDB:
     wandb.init(group=args.name, project="Multi-Agent-RL", entity="kevduong", config=configs)
-    wandb.save("../source/models/idqn_models.py", policy="now")
-    wandb.save("../source/idqn.py", policy="now")
+    wandb.save("./source/models/idqn_models.py", base_path='./source/models/', policy="now")
+    wandb.save("./source/idqn.py", base_path='./source',policy="now")
 
 
 env, agent_names, is_image = get_env(args.env)
@@ -96,3 +96,5 @@ path = "./saved_models/{}/".format(args.env)
 
 env.close()
 agents.save_model(path, seed)
+
+
