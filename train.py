@@ -35,7 +35,7 @@ agents = IDQN(
     observation_space=env.observation_space,
     action_space=env.action_space.n,
     agent_names=agent_names,
-    training_steps=max_paralell_steps,
+    training_steps=int(max_paralell_steps * args.explore_rate),
     device=device,
     buffer_size=args.buffer_size,
     lr=args.lr,
@@ -82,14 +82,18 @@ for steps in range(1, max_paralell_steps + 1):
     # increment number of steps per parallel environment
     running_log_steps += args.num_envs
     if running_log_steps >= args.log_steps or steps == max_paralell_steps:
-        avg_rew = test(agents, device)
+        avg_rew, agent_scores = test(agents, device)
         
         if USE_WANDB:
             wandb.log({"test_avg_reward": avg_rew}, step=steps * args.num_envs)
+            for agent in agent_names:
+                wandb.log({f"{agent} average reward": agent_scores[agent]}, step=steps * args.num_envs)
         else:
             print(f"average rewards at step {steps*args.num_envs}: {avg_rew}")
             epsilon = agents.log()
             print(f"epsilon: {epsilon}")
+            for agent in agent_names:
+                print(f"{agent} average reward: {agent_scores[agent]}")
         running_log_steps = 0
 
 path = "./saved_models/{}/".format(args.env)

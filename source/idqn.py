@@ -40,7 +40,7 @@ class IDQN:
         self.optimizers = {}
         self.epsilon = 1.0  # exploration probability at start
         self.explore_probability = 1.0
-        self.epsilon_min = 0.01  # minimum exploration probability
+        self.epsilon_min = 0.05  # minimum exploration probability
         self.batch_size = batch_size
         self.num_updates = num_updates
         self.is_image = is_image
