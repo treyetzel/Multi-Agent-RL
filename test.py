@@ -9,11 +9,16 @@ env, agent_names, is_image = get_env(args.env)
 def test(agents, device):
     seeds = 0
     total_reward = 0
+    agents_scores = {}
     for _ in range(10):
         env.reset(seeds)
         seeds += 1
         for agent in env.agent_iter():
             observation, reward, done, info = env.last()
+            if agent in agents_scores:
+                agents_scores[agent] += reward
+            else:
+                agents_scores[agent] = reward
             if done:
                 action = None
             else:
@@ -25,7 +30,11 @@ def test(agents, device):
             env.step(action)
             total_reward += reward
 
-    return total_reward / 10
+    avg_reward = total_reward / 10
+    for agent in agents_scores:
+        agents_scores[agent] /= 10
+
+    return avg_reward, agents_scores
 
 
 def display_model(path):

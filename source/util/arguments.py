@@ -31,7 +31,7 @@ parser.add_argument(
 parser.add_argument(
     "--max_steps", 
     type=int,
-    default=1000000,
+    default=10000,
     help="max steps to train models on"
 )
 
@@ -45,7 +45,7 @@ parser.add_argument(
 parser.add_argument(
     "--num_envs",
     type=int,
-    default=128,
+    default=64,
     help="Number of parallel environments to collect experiences from",
 )
 
@@ -69,6 +69,12 @@ parser.add_argument(
     type=float,
     default=5e-4,
     help="learning rate")
+
+parser.add_argument(
+    "--explore_rate",
+    type=float,
+    default=0.75,
+    help="anneals epsilon to 0.01 at (max_timesteps * explore_rate) steps")
 
 parser.add_argument(
     "--buffer_size",
