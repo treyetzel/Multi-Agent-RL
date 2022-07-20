@@ -3,11 +3,12 @@ from test import test
 import torch
 import wandb
 import os
+import numpy as np
 from source.idqn import IDQN
 from source.util.arguments import parser
 from source.util.envs import get_env, parallel_env
 
-USE_WANDB = True
+USE_WANDB = False
 
 torch.set_default_dtype(torch.float32)
 args = parser.parse_args()
@@ -64,7 +65,12 @@ for steps in range(1, max_paralell_steps + 1):
 
         for env_j in range(args.num_envs):
             # q_val = r + gamma * (max_a' Q(s', a') * done mask)
+            # inverting dones, since we want Qprime to only be calculated if not done
             done_mask = 1 if dones_i[env_j] == 0 else 0
+            # if obs is all 0, then agent has died (black_death supersuit wrapper)
+            if done_mask == 1 and np.all((obs_prime_i[env_j] == 0)):
+                done_mask = 0
+
             transition = (
                 obs_i[env_j],
                 actions_i[env_j],
