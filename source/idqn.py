@@ -177,7 +177,7 @@ class IDQN:
                 self._soft_update_target(
                     self.q_nets[agent],
                     self.target_nets[agent],
-                    0.01,  # TODO: Add this as a hyperparameter maybe? (tau) for updating target nets
+                    0.05,  # TODO: Add this as a hyperparameter maybe? (tau) for updating target nets
                 )
 
     def log(self):

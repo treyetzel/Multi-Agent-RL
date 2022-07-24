@@ -9,10 +9,24 @@ from supersuit import (
     color_reduction_v0,
 )
 
+
 def get_env(env_name):
-    image_input = False # Determines if CNN are used or not
+    image_input = False  # Determines if CNN are used or not
     if env_name == "kaz":
-        env = flatten_v0(black_death_v3(knights_archers_zombies_v10.env(use_typemasks=True)))
+        env = flatten_v0(
+            black_death_v3(
+                knights_archers_zombies_v10.env(
+                    # https://www.pettingzoo.ml/butterfly/knights_archers_zombies
+                    # making environment harder
+                    use_typemasks=True,
+                    spawn_rate=10,
+                    max_zombies=15,
+                    max_arrows=4,
+                    line_death=True,
+                    max_cycles=2500,
+                )
+            )
+        )
     elif env_name == "simple":
         env = flatten_v0(simple_v2.env(max_cycles=50, continuous_actions=False))
     elif env_name == "pong":
