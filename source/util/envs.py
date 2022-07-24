@@ -19,9 +19,7 @@ def get_env(env_name):
                     # https://www.pettingzoo.ml/butterfly/knights_archers_zombies
                     # making environment harder
                     use_typemasks=True,
-                    spawn_rate=10,
-                    max_zombies=15,
-                    max_arrows=4,
+                    max_arrows=2,
                     line_death=True,
                     max_cycles=2500,
                 )
