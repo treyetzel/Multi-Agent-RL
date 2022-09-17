@@ -2,6 +2,7 @@ from tracemalloc import start
 import torch
 from torch import nn
 import random
+import numpy as np
 
 
 class QNet_FC(nn.Module):
@@ -39,10 +40,67 @@ class QNet_FC(nn.Module):
             advantage_mean = advantages.mean(dim=0, keepdim=True)
         else:
             advantage_mean = advantages.mean(dim=1, keepdim=True)
-
+        
         return values + (advantages - advantage_mean)
 
 
+class QNet_FC_Hyperbolic(nn.Module):
+    """
+    Use this model for non-image based inputs
+    """
+
+    def __init__(self, obs, action_space, number_of_gammas):
+        super(QNet_FC_Hyperbolic, self).__init__()
+        
+        self.number_of_gammas = number_of_gammas
+        
+        self.feature_layer = nn.Sequential(
+            nn.Linear(obs, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+        )
+        
+        self.advantages_hidden = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            )
+            
+        self.values_hidden = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            )
+
+        self.advantage_out_layers = []
+        self.value_out_layers = []
+        for _ in range(number_of_gammas):
+            self.advantage_out_layers.append(nn.Sequential(nn.Linear(256, action_space)))
+            self.value_out_layers.append(nn.Sequential(nn.Linear(256, 1)))
+        
+
+    def forward(self, x):
+        # Dueling DQN
+        features = self.feature_layer(x)
+        
+        advantages_hidden_out = self.advantages_hidden(features)
+        values_hidden_out = self.values_hidden(features)
+        
+        out_list = np.empty(self.number_of_gammas, dtype=torch.Tensor)
+        for gamma_num in range(self.number_of_gammas):
+            value = self.value_out_layers[gamma_num](values_hidden_out)
+            
+            advantages = self.advantage_out_layers[gamma_num](advantages_hidden_out)
+            
+            if advantages.dim() == 1:
+                advantage_mean = advantages.mean(dim=0, keepdim=True)
+            else:
+                advantage_mean = advantages.mean(dim=1, keepdim=True)
+            
+            out_list[gamma_num] = value + (advantages - advantage_mean)
+            
+        out_tensor = torch.stack(tuple(out_list))
+        
+        return out_tensor
 
 
 class QNet_Nature_CNN(nn.Module):

@@ -1,27 +1,30 @@
-from test import test
+from test import test_idqn, test_hyperbolic_idqn
 
 import torch
 import wandb
 import os
 import numpy as np
 from source.idqn import IDQN
+from source.hyperbolic_idqn import Hyperbolic_IDQN
 from source.util.arguments import parser
 from source.util.envs import get_env, parallel_env
-
-USE_WANDB = False
 
 torch.set_default_dtype(torch.float32)
 args = parser.parse_args()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 configs = {}
 for arg in vars(args):
     configs[arg] = getattr(args, arg)
 
+USE_WANDB = args.use_wandb
+
 if USE_WANDB:
-    wandb.init(group=args.name, project="Multi-Agent-RL", entity="kevduong", config=configs)
+    wandb.init(group=args.name, project="Multi-Agent-RL", entity="treyetzel", config=configs)
     wandb.save("./source/models/idqn_models.py", base_path='./source/models/', policy="now")
     wandb.save("./source/idqn.py", base_path='./source/', policy="now")
 
+algorithm = args.algo
 
 env, agent_names, is_image = get_env(args.env)
 env = parallel_env(env, args.num_envs)
@@ -31,20 +34,46 @@ running_log_steps = 0  # number of steps since last log
 warm_up_steps = args.warm_up_steps // args.num_envs
 seed = args.seed
 observations = env.reset(seed=seed)
+
 torch.manual_seed(seed)
-agents = IDQN(
-    observation_space=env.observation_space,
-    action_space=env.action_space.n,
-    agent_names=agent_names,
-    training_steps=int(max_paralell_steps * args.explore_rate),
-    device=device,
-    buffer_size=args.buffer_size,
-    lr=args.lr,
-    gamma=args.gamma,
-    batch_size=args.batch_size,
-    num_updates=args.num_updates,
-    seed=seed,
-)
+
+if args.algo == 'idqn':
+    print("Algorithm: IDQN")
+    agents = IDQN(
+        observation_space=env.observation_space,
+        action_space=env.action_space.n,
+        agent_names=agent_names,
+        training_steps=int(max_paralell_steps * args.explore_rate),
+        device=device,
+        buffer_size=args.buffer_size,
+        lr=args.lr,
+        gamma=args.gamma,
+        batch_size=args.batch_size,
+        num_updates=args.num_updates,
+        seed=seed,
+    )
+elif args.algo == 'hyperbolic_idqn':
+    print("Algorithm: Hyperbolic IDQN")
+    agents = Hyperbolic_IDQN(
+        observation_space = env.observation_space,
+        action_space = env.action_space.n,
+        agent_names=agent_names,
+        device = device,
+        training_steps=int(max_paralell_steps * args.explore_rate),
+        buffer_size=args.buffer_size,
+        batch_size=args.batch_size,
+        num_updates=args.num_updates,
+        lr=args.lr,
+        number_of_gammas=args.number_of_gammas,
+        gamma_max=args.gamma_max,
+        hyperbolic_exponent = args.hyperbolic_exponent,
+        integral_estimate = args.integral_estimate,
+        acting_policy = args.acting_policy,
+        seed=seed
+    )
+else:
+    raise NotImplementedError("Algorithm not implemented")
+
 
 
 # Training loop
@@ -88,7 +117,12 @@ for steps in range(1, max_paralell_steps + 1):
     # increment number of steps per parallel environment
     running_log_steps += args.num_envs
     if running_log_steps >= args.log_steps or steps == max_paralell_steps:
-        avg_rew, agent_scores = test(agents, device)
+        if args.algo == 'idqn':
+            avg_rew, agent_scores = test_idqn(agents, device)
+        elif args.algo == 'hyperbolic_idqn':
+            avg_rew, agent_scores = test_hyperbolic_idqn(agents, device)
+        else:
+            raise NotImplementedError("Testing for algorithm not implemented")
         
         if USE_WANDB:
             wandb.log({"test_avg_reward": avg_rew}, step=steps * args.num_envs)

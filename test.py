@@ -6,7 +6,7 @@ from source.util.envs import get_env
 args = parser.parse_args()
 env, agent_names, is_image = get_env(args.env)
 
-def test(agents, device):
+def test_idqn(agents, device):
     seeds = 0
     total_reward = 0
     agents_scores = {}
@@ -36,8 +36,36 @@ def test(agents, device):
 
     return avg_reward, agents_scores
 
+def test_hyperbolic_idqn(agents, device):
+    seeds = 0
+    total_reward = 0
+    agents_scores = {}
+    for _ in range(10):
+        env.reset(seeds)
+        seeds += 1
+        for agent in env.agent_iter():
+            observation, reward, done, info = env.last()
+            if agent in agents_scores:
+                agents_scores[agent] += reward
+            else:
+                agents_scores[agent] = reward
+            if done:
+                action = None
+            else:
+                agents.q_nets[agent].eval()
+                q_vals = agents.get_acting_q_vals(agent, torch.Tensor(observation).unsqueeze(0).to(device))
+                action = q_vals.argmax().item()
+            env.step(action)
+            total_reward += reward
 
-def display_model(path):
+    avg_reward = total_reward / 10
+    for agent in agents_scores:
+        agents_scores[agent] /= 10
+
+    return avg_reward, agents_scores
+
+
+def display_model_idqn(path):
     env.reset()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     agent_names = env.agents
@@ -69,4 +97,4 @@ def display_model(path):
 
 if __name__ == "__main__":
     path = "./agents/idqn/models/idqn_model/"
-    print(display_model(path))
+    print(display_model_idqn(path))
